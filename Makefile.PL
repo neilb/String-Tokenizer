@@ -3,7 +3,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     'NAME'		=> 'String::Tokenizer',
-    'VERSION_FROM'	=> 'Tokenizer.pm', # finds $VERSION
+    'VERSION_FROM'	=> 'lib/String/Tokenizer.pm', # finds $VERSION
     'PREREQ_PM'		=> {
             "Test::More" => 0.47
         },
