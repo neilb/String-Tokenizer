@@ -4,7 +4,10 @@ package String::Tokenizer;
 use strict;
 use warnings;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
+
+use constant RETAIN_WHITESPACE => 1;
+use constant IGNORE_WHITESPACE => 0;
 
 ### constructor
 
@@ -12,7 +15,9 @@ sub new {
 	my ($_class, @args) = @_;
 	my $class = ref($_class) || $_class;
 	my $string_tokenizer = {
-		tokens => []
+		tokens => [],
+        delimiter => undef,
+        handle_whitespace => IGNORE_WHITESPACE
 		};
 	bless($string_tokenizer, $class);
 	$string_tokenizer->tokenize(@args) if @args;
@@ -21,16 +26,39 @@ sub new {
 
 ### methods
 
+sub setDelimiter {
+    my ($self, $delimiter) = @_;
+    my $delimiter_reg_exp = join "\|" => map { s/(\W)/\\$1/g; $_ } split // => $delimiter;
+    $self->{delimiter} = qr/$delimiter_reg_exp/;
+}
+
+sub handleWhitespace {
+    my ($self, $value) = @_;
+    $self->{handle_whitespace} = $value;
+}
+
 sub tokenize {
-	my ($self, $string, $delimiter) = @_;
+	my ($self, $string, $delimiter, $handle_whitespace) = @_;
+    # if we have a delimiter passed in then use it
+    $self->setDelimiter($delimiter)             if defined $delimiter;
+    # if we are asking about whitespace then handle it
+    $self->handleWhitespace($handle_whitespace) if defined $handle_whitespace;
+    # if the two above are not handled, then the object will use
+    # the values set already. 
 	# split everything by whitespace no matter what
 	# (possible multiple occurances of white space too) 
-	my @tokens = split /\s+/ => $string;
-	if ($delimiter) {
+	my @tokens;
+    if ($self->{handle_whitespace}) {
+        @tokens = split /(\s+)/ => $string;
+    }
+    else {
+        @tokens = split /\s+/ => $string;    
+    }
+	if ($self->{delimiter}) {
 		# create the delimiter reg-ex
 		# escape all non-alpha-numeric 
 		# characters, just to be safe
-		$delimiter = join "\|" => map { s/(\W)/\\$1/g; $_ } split // => $delimiter;
+		my $delimiter = $self->{delimiter};
 		# loop through the tokens
 		@tokens = map {
 				# if the token contains a delimiter then ...
@@ -63,7 +91,7 @@ sub tokenize {
 					}
 					# now push any remaining token onto 
 					# the temp tokens list
-					push @_tokens => $token if $token;
+					push @_tokens => $token if defined $token;
 					# and return tokens
 					@_tokens;
 				}
@@ -212,6 +240,11 @@ sub skipTokensUntil {
     return 0;
 }
 
+sub skipTokenIfWhitespace {
+    my ($self) = @_;
+    $self->{index}++ if $self->lookAheadToken() =~ /^\s+$/;
+}
+
 sub skipTokens {
     my ($self, $num_token_to_skip) = @_;
     $num_token_to_skip ||= 1;
@@ -243,6 +276,17 @@ String::Tokenizer - A simple string tokenizer.
   # will print '(, (, 5, +, 5, ), -, 10, )'
   print join ", " => $tokenizer->getTokens();
   
+  # create tokenizer which retains whitespace
+  my $st = String::Tokenizer->new(
+                'this is a test with,    (signifigant) whitespace',
+                ',()',
+                String::Tokenizer->RETAIN_WHITESPACE
+                );
+                
+  # this will print:
+  # 'this', ' ', 'is', ' ', 'a', ' ', 'test', ' ', 'with', '	', '(', 'signifigant', ')', ' ', 'whitespace'
+  print "'" . (join "', '" => $tokenizer->getTokens()) . "'";  
+  
   # get a token iterator
   my $i = $tokenizer->iterator();
   while ($i->hasNextToken()) {
@@ -273,13 +317,21 @@ Also note that this is not a lexical analyser. Many people confuse tokenization 
 
 =over 4
 
-=item B<new ($string, $delimiters)>
+=item B<new ($string, $delimiters, $handle_whitespace)>
 
 If you do not supply any parameters, nothing happens, the instance is just created. But if you do supply parameters, they are passed on to the C<tokenize> method and that method is run. For information about those arguments, see C<tokenize> below.
 
-=item B<tokenize ($string, $delimiters)>
+=item B<setDelimiter ($delimiter)>
 
-Takes a C<$string> to tokenize, and optionally a set of C<$delimiter> characters to facilitate the tokenization. The C<$string> parameter is obvious, the C<$delimiter> parameter is not as transparent. C<$delimiter> is a string of characters, these characters are then seperated into individual characters and are used to split the C<$string> with. So given this string:
+This can be used to set the delimiter string, this is used by C<tokenize>.
+
+=item B<handleWhitespace ($value)>
+
+This can be used to set the whitespace handling. It accepts one of the two constant values C<RETAIN_WHITESPACE> or C<IGNORE_WHITESPACE>.
+
+=item B<tokenize ($string, $delimiters, $handle_whitespace)>
+
+Takes a C<$string> to tokenize, and optionally a set of C<$delimiter> characters to facilitate the tokenization and the type of whitespace handling with C<$handle_whitespace>. The C<$string> parameter and the C<$handle_whitespace> parameter are pretty obvious, the C<$delimiter> parameter is not as transparent. C<$delimiter> is a string of characters, these characters are then seperated into individual characters and are used to split the C<$string> with. So given this string:
 
   (5 + (100 * (20 - 35)) + 4)
 
@@ -295,7 +347,21 @@ We now can differentiate the parens from the numbers, and no globbing occurs. If
 
   (5+(100*(20-35))+4)
 
-as some languages do. Then you would give this delimiter C<+*-()> to arrive at the same result.
+as some languages do. Then you would give this delimiter C<+*-()> to arrive at the same result. 
+
+If you decide that whitespace is signifigant in your string, then you need to specify that like this:
+
+  my $st = String::Tokenizer->new(
+                'this is a test with,    (signifigant) whitespace',
+                ',()',
+                String::Tokenizer->RETAIN_WHITESPACE
+                );
+
+A call to C<getTokens> on this instance would result in the following token set.
+
+ 'this', ' ', 'is', ' ', 'a', ' ', 'test', ' ', 'with', '	', '(', 'signifigant', ')', ' ', 'whitespace'
+
+All running whitespace is grouped together into a single token, we make no attempt to split it into its individual parts. 
 
 =item B<getTokens>
 
@@ -356,6 +422,10 @@ This will jump the internal counter ahead by 1.
 
 This will jump the internal counter ahead by C<$number_to_skip>.
 
+=item B<skipTokenIfWhitespace>
+
+This will skip the next token if it is whitespace.
+
 =item B<skipTokensUntil ($token_to_match)>
 
 Given a string as a C<$token_to_match>, this will skip all tokens until it matches that string. If the C<$token_to_match> is never matched, then the iterator will return the internal pointer to its initial state.
@@ -390,17 +460,13 @@ None that I am aware of. Of course, if you find a bug, let me know, and I will b
 
 I use B<Devel::Cover> to test the code coverage of my tests, below is the B<Devel::Cover> report on this module's test suite.
 
- ------------------------------------- ------ ------ ------ ------ ------ ------ ------
- File                                    stmt branch   cond    sub    pod   time  total
- ------------------------------------- ------ ------ ------ ------ ------ ------ ------
- String/Tokenizer.pm                    100.0  100.0   64.3  100.0  100.0   69.1   97.2
- t/10_String_Tokenizer_test.t           100.0    n/a    n/a  100.0    n/a    4.7  100.0
- t/20_String_Tokenizer_Iterator_test.t  100.0  100.0    n/a  100.0    n/a   14.7  100.0
- t/pod.t                                100.0   50.0    n/a  100.0    n/a    5.9   95.2
- t/pod_coverage.t                       100.0   50.0    n/a  100.0    n/a    5.6   95.2
- ------------------------------------- ------ ------ ------ ------ ------ ------ ------
- Total                                  100.0   95.2   64.3  100.0  100.0  100.0   97.9
- ------------------------------------- ------ ------ ------ ------ ------ ------ ------
+ ------------------------ ------ ------ ------ ------ ------ ------ ------
+ File                       stmt branch   cond    sub    pod   time  total
+ ------------------------ ------ ------ ------ ------ ------ ------ ------
+ String/Tokenizer.pm       100.0  100.0   64.3  100.0  100.0  100.0   97.6
+ ------------------------ ------ ------ ------ ------ ------ ------ ------
+ Total                     100.0  100.0   64.3  100.0  100.0  100.0   97.6
+ ------------------------ ------ ------ ------ ------ ------ ------ ------
 
 =head1 SEE ALSO
 
@@ -421,6 +487,14 @@ This one hasn't been touched since 2001, although it did get up to version 0.27.
 =item B<Text::Tokenizer>
 
 This one looks more up to date (updated as recently as March 2004), but is both a lexical analyzer and a tokenizer. It also uses XS, mine is pure perl. This is something maybe to look into if you were to need a more beefy solution that what String::Tokenizer provides.
+
+=back
+
+=head1 THANKS
+
+=over
+
+=item Thanks to Stephan Tobias for finding bugs and suggestions on whitespace handling.
 
 =back
 

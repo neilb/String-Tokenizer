@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 91;
+use Test::More tests => 100;
 
 BEGIN { 
     use_ok('String::Tokenizer') 
@@ -28,7 +28,7 @@ sub test {
 
 STRING_TO_TOKENIZE
 
-my @expected4 = qw(sub test { my ( $arg ) = @_ ; if ( $arg == 10 ) { return 1 ; } return 0 ; });
+my @expected = qw(sub test { my ( $arg ) = @_ ; if ( $arg == 10 ) { return 1 ; } return 0 ; });
 
 my $st = String::Tokenizer->new($STRING, '();{}');
 isa_ok($st, "String::Tokenizer");  
@@ -58,7 +58,7 @@ ok(!defined($i->lookAheadToken()), '... this is undefined');
 
 is_deeply(
     \@iterator_output,
-    \@expected4,
+    \@expected,
     '... this is the output we would expect'); 
   
 my @reverse_iterator_output;
@@ -69,7 +69,7 @@ ok(!defined($i->lookAheadToken()), '... this is undefined');
   
 is_deeply(
     \@reverse_iterator_output,
-    [ reverse @expected4 ],
+    [ reverse @expected ],
     '... this is the output we would expect'); 
 
 my $look_ahead;
@@ -145,24 +145,36 @@ is_deeply(
         '... got the collection (or lack thereof) we expected');    
     is($i->nextToken(), '"', '... got the right token next expected');                          
 }
-  
- 
-# TODO:
-# my @expected6 = qw(sub test { my ( $ arg ) = @ _ ; if ( $ arg == 10 ) { return 1 ; } return 0 ; });
-# 
-# $i->reset();
-# 
-# while ($i->hasNextToken()) {
-#     my $next = $i->nextToken();
-#     if ($next =~ /^(\$|\@)/) {
-#         $i->expandCurrentToken('$@');
-#     }
-# }
-# 
-# diag "\n'" . (join "', '" => $st->getTokens()) . "'";
-# diag "'" . (join "', '" => @expected6) . "'\n";
-# 
-# ok(eq_array(scalar $st->getTokens(),
-#             \@expected6),
-# '... this is the output we would expect'); 
+
+{
+    my $st = String::Tokenizer->new(
+                    'this is "a     good way" to "test a   double quoted  " string' , 
+                    '"', 
+                    String::Tokenizer->RETAIN_WHITESPACE
+                    );
+    isa_ok($st, "String::Tokenizer");  
+        
+    my $i = $st->iterator();
+    
+    isa_ok($i, "String::Tokenizer::Iterator");  
+
+    is($i->nextToken(), 'this', '... got the right start token');
+    $i->skipTokenIfWhitespace();
+    is($i->lookAheadToken(), 'is', '... got the right start token');
+    $i->skipTokenIfWhitespace();
+    is($i->nextToken(), 'is', '... got the right start token');    
+    $i->skipTokenIfWhitespace();
+    is($i->nextToken(), '"', '... got the right start token');
+    
+    is_deeply(
+        [ $i->collectTokensUntil('"') ],
+        [ "a", "     ", "good", " ", "way" ],
+        '... got the collection (or lack thereof) we expected');
+        
+    is($i->lookAheadToken(), ' ', '... our next token is whitespace');
+    $i->skipTokenIfWhitespace();    
+    is($i->nextToken(), 'to', '... got the right token next expected'); 
+    
+    # this is enough for now, we dont need to test the rest of the string
+}
   
