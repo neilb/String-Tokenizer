@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 69;
+use Test::More tests => 91;
 
 BEGIN { 
     use_ok('String::Tokenizer') 
@@ -31,11 +31,11 @@ STRING_TO_TOKENIZE
 my @expected4 = qw(sub test { my ( $arg ) = @_ ; if ( $arg == 10 ) { return 1 ; } return 0 ; });
 
 my $st = String::Tokenizer->new($STRING, '();{}');
+isa_ok($st, "String::Tokenizer");  
 
 can_ok("String::Tokenizer::Iterator", 'new');
 
 my $i = $st->iterator();
-
 isa_ok($i, "String::Tokenizer::Iterator");
 
 can_ok($i, 'reset');
@@ -47,6 +47,8 @@ can_ok($i, 'currentToken');
 can_ok($i, 'lookAheadToken');
 can_ok($i, 'skipToken');
 can_ok($i, 'skipTokens');
+can_ok($i, 'skipTokensUntil');
+can_ok($i, 'collectTokensUntil');
 
 my @iterator_output;
 push @iterator_output => $i->nextToken() while $i->hasNextToken();
@@ -54,9 +56,10 @@ push @iterator_output => $i->nextToken() while $i->hasNextToken();
 ok(!defined($i->nextToken()), '... this is undefined');
 ok(!defined($i->lookAheadToken()), '... this is undefined');
 
-ok(eq_array(\@iterator_output,
-            \@expected4),
-  '... this is the output we would expect'); 
+is_deeply(
+    \@iterator_output,
+    \@expected4,
+    '... this is the output we would expect'); 
   
 my @reverse_iterator_output;
 push @reverse_iterator_output => $i->prevToken() while $i->hasPrevToken();  
@@ -64,9 +67,10 @@ push @reverse_iterator_output => $i->prevToken() while $i->hasPrevToken();
 ok(!defined($i->prevToken()), '... this is undefined');
 ok(!defined($i->lookAheadToken()), '... this is undefined');
   
-ok(eq_array(\@reverse_iterator_output,
-            [ reverse @expected4 ]),
-  '... this is the output we would expect'); 
+is_deeply(
+    \@reverse_iterator_output,
+    [ reverse @expected4 ],
+    '... this is the output we would expect'); 
 
 my $look_ahead;
 while ($i->hasNextToken()) {  
@@ -88,7 +92,77 @@ while ($i->hasNextToken()) {
     $i->skipToken();    
 }
 
-ok(eq_array(\@skip_output,
-            \@expected5),
-  '... this is the output we would expect');  
+is_deeply(
+        \@skip_output,
+        \@expected5,
+        '... this is the output we would expect');  
+  
+# test the skipTokensUntil and collectTokensUntil function with a double quoted string
+
+{
+    my $st = String::Tokenizer->new('this "is a good way" to "test a double quoted" string' , '"');
+    isa_ok($st, "String::Tokenizer");  
+        
+    my $i = $st->iterator();
+    
+    isa_ok($i, "String::Tokenizer::Iterator");  
+
+    is($i->nextToken(), 'this', '... got the right start token');
+    ok($i->skipTokensUntil('"'), '... this will successfully skip');
+    is($i->nextToken(), 'is', '... got the right token next expected');
+    ok($i->skipTokensUntil('"'), '... this will successfully skip');
+    is($i->nextToken(), 'to', '... got the right token next expected');
+    is($i->nextToken(), '"', '... got the right token next expected');    
+    is_deeply(
+        [ $i->collectTokensUntil('"') ],
+        [ qw/test a double quoted/ ],
+        '... got the collection we expected');
+    is($i->nextToken(), 'string', '... got the right token next expected');      
+}
+
+{
+    my $st = String::Tokenizer->new('this "is a good way" to "test a double quoted" string' , '"');
+    isa_ok($st, "String::Tokenizer");  
+        
+    my $i = $st->iterator();
+    
+    isa_ok($i, "String::Tokenizer::Iterator");  
+
+    is($i->nextToken(), 'this', '... got the right start token');
+    ok(!$i->skipTokensUntil('?'), '... this will not successfully match and so not skip');   
+    is_deeply(
+        [ $i->collectTokensUntil('"') ],
+        [ ],
+        '... got the collection (or lack thereof) we expected');
+    is_deeply(
+        [ $i->collectTokensUntil('"') ],
+        [ qw/is a good way/ ],
+        '... got the collection (or lack thereof) we expected');
+    is($i->nextToken(), 'to', '... got the right token next expected'); 
+    is_deeply(
+        [ $i->collectTokensUntil('not found') ],
+        [ ],
+        '... got the collection (or lack thereof) we expected');    
+    is($i->nextToken(), '"', '... got the right token next expected');                          
+}
+  
+ 
+# TODO:
+# my @expected6 = qw(sub test { my ( $ arg ) = @ _ ; if ( $ arg == 10 ) { return 1 ; } return 0 ; });
+# 
+# $i->reset();
+# 
+# while ($i->hasNextToken()) {
+#     my $next = $i->nextToken();
+#     if ($next =~ /^(\$|\@)/) {
+#         $i->expandCurrentToken('$@');
+#     }
+# }
+# 
+# diag "\n'" . (join "', '" => $st->getTokens()) . "'";
+# diag "'" . (join "', '" => @expected6) . "'\n";
+# 
+# ok(eq_array(scalar $st->getTokens(),
+#             \@expected6),
+# '... this is the output we would expect'); 
   

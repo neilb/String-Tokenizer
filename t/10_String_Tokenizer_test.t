@@ -30,21 +30,24 @@ can_ok($st, 'iterator');
 
 $st->tokenize($STRING1);
 
-ok(eq_array(scalar $st->getTokens(),
-            \@expected1),
-  '... this is the output we would expect');
+is_deeply(
+    scalar $st->getTokens(),
+    \@expected1,
+    '... this is the output we would expect');
 
 $st->tokenize($STRING1, '()');
 
-ok(eq_array([ $st->getTokens() ],
-            \@expected2),
-  '... this is the output we would expect');
+is_deeply(
+    [ $st->getTokens() ],
+    \@expected2,
+    '... this is the output we would expect');
   
 my $st2 = String::Tokenizer->new($STRING1, '()=-*/');
 
-ok(eq_array(scalar $st2->getTokens(),
-            \@expected3),
-  '... this is the output we would expect');  
+is_deeply(
+    scalar $st2->getTokens(),
+    \@expected3,
+    '... this is the output we would expect');  
  
 # it can also parse reasonably well formated perl code  
 my $STRING2 = <<STRING_TO_TOKENIZE;
@@ -62,7 +65,8 @@ my @expected4 = qw(sub test { my ( $arg ) = @_ ; if ( $arg == 10 ) { return 1 ; 
 
 my $st3 = String::Tokenizer->new($STRING2, '();{}');
 
-ok(eq_array(scalar $st3->getTokens(),
-            \@expected4),
-  '... this is the output we would expect'); 
+is_deeply(
+    scalar $st3->getTokens(),
+    \@expected4,
+    '... this is the output we would expect'); 
 

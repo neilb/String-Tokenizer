@@ -1,5 +1,12 @@
 Revision history for Perl extension String::Tokenizer.
 
+0.04  Sun Aug 22 2004
+    - added skipTokensUntil and collectTokensUntil methods
+      to the String::Tokenizer::Iterator
+        - added test for this
+        - added documentation for this
+    - added the pod.t and pod_coverage.t test files
+
 0.03  Thurs May 6 2004
     - fixed some documentation issues.
     - added token iteration support with the inner class
