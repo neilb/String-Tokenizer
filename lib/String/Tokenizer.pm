@@ -4,7 +4,7 @@ package String::Tokenizer;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 ### constructor
 
@@ -86,6 +86,77 @@ sub getTokens {
 			$self->{tokens};
 }
 
+sub iterator {
+    my ($self) = @_;
+    # returns a copy of the array
+    return String::Tokenizer::Iterator->new($self->{tokens});
+}
+
+package String::Tokenizer::Iterator;
+
+use strict;
+use warnings;
+
+sub new {
+    ((caller())[0] eq "String::Tokenizer") 
+        || die "Insufficient Access Priviledges : Only String::Tokenizer can create String::Tokenizer::Iterator instances";
+    my ($_class, $tokens) = @_;
+    my $class = ref($_class) || $_class;
+    my $iterator = {
+        tokens => $tokens,
+        index => 0
+        };
+    bless($iterator, $class);
+    return $iterator;
+}
+
+sub reset {
+    my ($self) = @_;
+    $self->{index} = 0;
+}
+
+sub hasNextToken {
+    my ($self) = @_;
+    return ($self->{index} < scalar @{$self->{tokens}}) ? 1 : 0;    
+}
+
+sub hasPrevToken {
+    my ($self) = @_;
+    return ($self->{index} > 0);  
+}
+
+sub nextToken {
+    my ($self) = @_;
+    return undef if ($self->{index} >= scalar @{$self->{tokens}});    
+    return $self->{tokens}->[$self->{index}++];
+}
+
+sub prevToken {
+    my ($self) = @_;
+    return undef if ($self->{index} <= 0);    
+    return $self->{tokens}->[--$self->{index}];
+}
+
+sub currentToken {
+    my ($self) = @_;
+    return $self->{tokens}->[$self->{index} - 1];      
+}
+
+sub lookAheadToken {
+    my ($self) = @_;
+    return undef if (  $self->{index} <= 0 
+                    || $self->{index} >= scalar @{$self->{tokens}});
+    return $self->{tokens}->[$self->{index}];    
+}
+
+sub skipTokens {
+    my ($self, $num_token_to_skip) = @_;
+    $num_token_to_skip ||= 1;
+    $self->{index} += $num_token_to_skip;
+}
+
+*skipToken = \&skipTokens;
+
 1;
 
 __END__
@@ -108,6 +179,24 @@ String::Tokenizer - A simple string tokenizer.
   
   # will print '(, (, 5, +, 5, ), -, 10, )'
   print join ", " => $tokenizer->getTokens();
+  
+  # get a token iterator
+  my $i = $tokenizer->iterator();
+  while ($i->hasNextToken()) {
+      my $next = $i->nextToken();
+      # peek ahead at the next token
+      my $look_ahead = $i->lookAheadToken();
+      # ... 
+      # skip the next 2 tokens
+      $i->skipTokens(2);
+      # ... 
+      # then backtrack 1 token
+      my $previous = $i->prevToken();
+      # ... 
+      # get the current token
+      my $current = $i->currentToken();
+      # ...
+  }
 
 =head1 DESCRIPTION
 
@@ -121,11 +210,11 @@ Also note that this is not a lexical analyser. Many people confuse tokenization 
 
 =over 4
 
-=item new ($string, $delimiters)
+=item B<new ($string, $delimiters)>
 
 If you do not supply any parameters, nothing happens, the instance is just created. But if you do supply parameters, they are passed on to the C<tokenize> method and that method is run. For information about those arguments, see C<tokenize> below.
 
-=item tokenize ($string, $delimiters)
+=item B<tokenize ($string, $delimiters)>
 
 Takes a C<$string> to tokenize, and optionally a set of C<$delimiter> characters to facilitate the tokenization. The C<$string> parameter is obvious, the C<$delimiter> parameter is not as transparent. C<$delimiter> is a string of characters, these characters are then seperated into individual characters and are used to split the C<$string> with. So given this string:
 
@@ -133,31 +222,82 @@ Takes a C<$string> to tokenize, and optionally a set of C<$delimiter> characters
 
 The C<tokenize> method without a C<$delimiter> parameter would return the following comma seperated list of tokens:
 
-  (5, +, (100, *, (20, -, 35)), +, 4)
+  '(5', '+', '(100', '*', '(20', '-', '35))', '+', '4)'
 
-However, if you were to pass the following set of delimiters [C<(, )>] to C<tokenize>, you would get the following comma seperated list of tokens:
+However, if you were to pass the following set of delimiters C<(, )> to C<tokenize>, you would get the following comma seperated list of tokens:
 
-  (, 5, +, (, 100, *, (, 20, -, 35, ), ), +, 4, )
+  '(', '5', '+', '(', '100', '*', '(', '20', '-', '35', ')', ')', '+', '4', ')'
 
 We now can differentiate the parens from the numbers, and no globbing occurs. If you wanted to allow for optionally leaving out the whitespace in the expression, like this:
 
   (5+(100*(20-35))+4)
 
-as some languages do. Then you would give this delimiter [C<+*-()>] to arrive at the same result.
+as some languages do. Then you would give this delimiter C<+*-()> to arrive at the same result.
 
-=item getTokens
+=item B<getTokens>
 
 Simply returns the array of tokens. It returns an array-ref in scalar context.
+
+=item B<iterator>
+
+Returns a B<String::Tokenizer::Iterator> instance, see below for more details.
+
+=back
+
+=head1 INNER CLASS
+
+A B<String::Tokenizer::Iterator> instance is returned from the B<String::Tokenizer>'s C<iterator> method and serves as yet another means of iterating through an array of tokens. The simplest way would be to call C<getTokens> and just manipulate the array yourself, or push the array into another object. However, iterating through a set of tokens tends to get messy when done manually. So here I have provided the B<String::Tokenizer::Iterator> to address those common token processing idioms. It is basically a bi-directional iterator which can look ahead, skip and be reset to the begining.
+
+B<NOTE:>
+B<String::Tokenizer::Iterator> is an inner class, which means that only B<String::Tokenizer> objects can create an instance of it. That said, if B<String::Tokenizer::Iterator>'s C<new> method is called from outside of the B<String::Tokenizer> package, an exception is thrown.
+
+=over 4
+
+=item B<new ($tokens_array_ref)>
+
+This accepts an array reference of tokens and sets up the iterator. This method can only be called from within the B<String::Tokenizer> package, otherwise an exception will be thrown.
+
+=item B<reset>
+
+This will reset the interal counter, bringing it back to the begining of the token list.
+
+=item B<hasNextToken>
+
+This will return true (1) if there are more tokens to be iterated over, and false (0) otherwise.
+
+=item B<hasPrevToken>
+
+This will return true (1) if the begining of the token list has been reached, and false (0) otherwise.
+
+=item B<nextToken>
+
+This dispenses the next available token, and move the internal counter ahead by one.
+
+=item B<prevToken>
+
+This dispenses the previous token, and moves the internal counter back by one.
+
+=item B<currentToken>
+
+This returns the current token, which will match the last token retrieved by C<nextToken>.
+
+=item B<lookAheadToken>
+
+This peeks ahead one token to the next one in the list. This item will match the next item dispensed with C<nextToken>. This is a non-destructive look ahead, meaning it does not alter the position of the internal counter.
+
+=item B<skipToken>
+
+This will jump the internal counter ahead by 1.
+
+=item B<skipTokens ($number_to_skip)>
+
+This will jump the internal counter ahead by C<$number_to_skip>.
 
 =back
 
 =head1 TO DO
 
-This module is very simple, which is much of what I am going for with it. But still it could use some other features. 
-
-One is a better means of token iteration, once they are generated they are available as an array, which is good, but a custom token iterator or set of iterators might be nice. Ones specicially desinged to serve the lexical-analysis and parsing needs. B<String::Tokeniser> actually provides something like that I am talking about. 
-
-Another possible feature is the ability to subsitute regular expressions as delimiters. I had given this a lot of thought originally, but had opted not too, since it had the potential to greatly incresed the complexity of things, and I was really striving for simplicity. But as they say, easy things should be easy, and hard thing possible, so we shall see.
+The Java StringTokenizer class allows for a token to be tokenized further, therefore breaking it up more and including the results into the current token stream. I have never used this feature in this class, but I can see where it might be a useful one. This may be in the next release if it works out.
 
 =head1 BUGS
 
@@ -167,26 +307,27 @@ None that I am aware of. Of course, if you find a bug, let me know, and I will b
 
 I use B<Devel::Cover> to test the code coverage of my tests, below is the B<Devel::Cover> report on this module's test suite.
 
- ---------------------------- ------ ------ ------ ------ ------ ------ ------
- File                           stmt branch   cond    sub    pod   time  total
- ---------------------------- ------ ------ ------ ------ ------ ------ ------
- /String/Tokenizer.pm          100.0  100.0   50.0  100.0  100.0   27.7   94.9
- t/10_String_Tokenizer_test.t  100.0    n/a    n/a    n/a    n/a  100.0  100.0
- ---------------------------- ------ ------ ------ ------ ------ ------ ------
- Total                         100.0  100.0   50.0  100.0  100.0  100.0   95.9
- ---------------------------- ------ ------ ------ ------ ------ ------ ------
+ ------------------------------------- ------ ------ ------ ------ ------ ------ ------
+ File                                    stmt branch   cond    sub    pod   time  total
+ ------------------------------------- ------ ------ ------ ------ ------ ------ ------
+ /String/Tokenizer.pm                   100.0  100.0   60.0  100.0  100.0   10.1   95.6
+ t/10_String_Tokenizer_test.t           100.0    n/a    n/a  100.0    n/a    5.9  100.0
+ t/20_String_Tokenizer_Iterator_test.t  100.0  100.0    n/a  100.0    n/a   84.0  100.0
+ ------------------------------------- ------ ------ ------ ------ ------ ------ ------
+ Total                                  100.0  100.0   60.0  100.0  100.0  100.0   97.4
+ ------------------------------------- ------ ------ ------ ------ ------ ------ ------
 
 =head1 SEE ALSO
 
 The interface and workings of this module are based largely on the StringTokenizer class from the Java standard library. 
 
-Below is a short list of other modules that might be considered similar to this one. I put this here for 2 reasons. One is that this module might be to simple for your usage, and I provide here a list of others that might be of use to you instead. And secondly because I feel that people tend to be hasty in declaring something "CPAN pollution" and "reinventing the wheel". There are many good modules out there, but they don't always fit peoples needs. Some are abandoned, and no longer maintained, others lack good test suites, and still more have just grown too complex with features and such to be useful in some contexts. With this module I aim to provide a simple clean String Tokenizer, based largely on the one found in the Java standard library. 
+Below is a short list of other modules that might be considered similar to this one. If this module does not suit your needs, you might look at one of these.
 
 =over 4
 
 =item B<String::Tokeniser>
 
-This module looks as if it hasnt been updated from 0.01 and that was uploaded in since 2002. So my guess is it has been abandonded. Along with being a tokenizer, it also provides a means of moving through the resulting tokens, allowing for skipping of tokens and such. These are nice features I must admit, and possibly these (or similar) features may make it into String::Tokenizer in future releases. 
+Along with being a tokenizer, it also provides a means of moving through the resulting tokens, allowing for skipping of tokens and such. But this module looks as if it hasnt been updated from 0.01 and that was uploaded in since 2002.
 
 =item B<Parse::Tokens>
 
@@ -194,7 +335,7 @@ This one hasn't been touched since 2001, although it did get up to version 0.27.
 
 =item B<Text::Tokenizer>
 
-This one looks more up to date (updated as recently as March 2004), but is both a lexical analyzer and a tokenizer. It also uses XS, mine is Pure Perl. This is something maybe to look into if you were to need a more beefy solution that what B<String::Tokenizer> provides.
+This one looks more up to date (updated as recently as March 2004), but is both a lexical analyzer and a tokenizer. It also uses XS, mine is pure perl. This is something maybe to look into if you were to need a more beefy solution that what String::Tokenizer provides.
 
 =back
 

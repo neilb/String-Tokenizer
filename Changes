@@ -1,5 +1,12 @@
 Revision history for Perl extension String::Tokenizer.
 
+0.03  Thurs May 6 2004
+    - fixed some documentation issues.
+    - added token iteration support with the inner class
+      String::Tokenizer::Iterator.
+        - added tests for iteration
+        - added documentation for iteration
+
 0.02  Mon April 12 2004
     - error in the Makefile.PL file, no changes on this release
 

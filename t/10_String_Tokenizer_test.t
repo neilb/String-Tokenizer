@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 9;
+use Test::More tests => 10;
 
 BEGIN { 
     use_ok('String::Tokenizer') 
@@ -26,6 +26,7 @@ my $st = String::Tokenizer->new();
 isa_ok($st, 'String::Tokenizer');
 can_ok($st, 'tokenize');
 can_ok($st, 'getTokens');
+can_ok($st, 'iterator');
 
 $st->tokenize($STRING1);
 
@@ -65,5 +66,3 @@ ok(eq_array(scalar $st3->getTokens(),
             \@expected4),
   '... this is the output we would expect'); 
 
-
-  
