@@ -4,6 +4,7 @@ Revision history for Perl module String::Tokenizer
     - Tweaked format of this file closer to CPAN::Changes::Spec
     - Switched to Dist::Zilla, adding the github repo to the metadata,
       ensuring dist has META.{json,yml}, and min perl version specified.
+    - Changed tests t/pod.t and t/pod_coverage.t to be release tests
 
 0.05 2004-08-31 STEVAN
     - added support for whitespace tokens, feature 
