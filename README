@@ -1,27 +1,21 @@
-String/Tokenizer version 0.05
-=============================
 
-INSTALLATION
+    README for Perl module String::Tokenizer
 
-To install this module type the following:
+This module provides a simple string tokenizer which takes a string
+and splits it on whitespace. It also optionally takes a string of
+characters to use as delimiters, and returns them with the token set
+as well. This allows for splitting the string in many different ways.
 
-   perl Makefile.PL
-   make
-   make test
-   make install
+You can read a nicely formatted version of the documentation for
+this module online:
 
-DEPENDENCIES
+    https://metacpan.org/pod/String::Tokenizer
 
-This module requires these other modules and libraries:
+You should be able to install this using your usual method for installing
+modules from CPAN. If you don't have one, have a look at:
 
-    None
+    http://www.cpan.org/modules/INSTALL.html
 
-COPYRIGHT AND LICENCE
+This module was written by Stevan Little <stevan@cpan.org>
 
-Copyright (C) 2004 Infinity Interactive, Inc.
-
-http://www.iinteractive.com
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
-
+Copyright (c) 2004 Infinity Interactive, Inc.
