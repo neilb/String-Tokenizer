@@ -479,22 +479,25 @@ Below is a short list of other modules that might be considered similar to this 
 
 =over 4
 
-=item B<String::Tokeniser>
+=item L<String::Tokeniser>
 
 Along with being a tokenizer,
 it also provides a means of moving through the resulting tokens,
 allowing for skipping of tokens and such.
 It was last updated in 2011.
 
-=item B<Parse::Tokens>
+=item L<Parse::Tokens>
 
 This one hasn't been touched since 2001,
 although it did get up to version 0.27.
 It looks to lean over more towards the parser side than a basic tokenizer. 
 
-=item B<Text::Tokenizer>
+=item L<Text::Tokenizer>
 
-This one looks more up to date (updated as recently as March 2004), but is both a lexical analyzer and a tokenizer. It also uses XS, mine is pure perl. This is something maybe to look into if you were to need a more beefy solution that what String::Tokenizer provides.
+This is both a lexical analyzer and a tokenizer.
+It also uses XS, where String::Tokenizer is pure perl.
+This is something maybe to look into if you were to need a more beefy solution
+than String::Tokenizer provides.
 
 =back
 

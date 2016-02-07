@@ -6,6 +6,7 @@ Revision history for Perl module String::Tokenizer
       ensuring dist has META.{json,yml}, and min perl version specified.
     - Changed tests t/pod.t and t/pod_coverage.t to be release tests
     - Applied spelling corrections from RT#70040; thanks to BJ Webb.
+    - Made the module names in SEE ALSO be L<...> links
 
 0.05 2004-08-31 STEVAN
     - added support for whitespace tokens, feature 
